@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Adam Asmaca</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      text-align: center;
+      padding-top: 50px;
+    }
+
+    .container {
+      background-color: rgb(240, 172, 222);
+      width: 800px;
+      margin: auto;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px #aaa;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .game-area {
+      flex: 1;
+      margin-right: 20px;
+    }
+
+    #word {
+      font-size: 32px;
+      letter-spacing: 8px;
+      margin: 20px 0;
+    }
+
+    #letters button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    #message {
+      font-size: 20px;
+      margin-top: 10px;
+      color: darkred;
+    }
+
+    canvas {
+      border: 1px solid #ccc;
+      background-color: #f9f9f9;
+    }
+
+    #skorFormu {
+      margin-top: 15px;
+    }
+
+    input[type="text"] {
+      padding: 5px;
+      width: 150px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      transition: 0.3s;
+    }
+
+    input[type="text"]:focus {
+      border-color: #a18cd1;
+      box-shadow: 0 0 8px #a18cd1;
+    }
+
+    /* Yeni buton stili */
+    button {
+      background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+      border: none;
+      color: white;
+      padding: 12px 25px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 8px 15px rgba(171, 105, 212, 0.3);
+      transition: all 0.3s ease;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #fbc2eb 0%, #a18cd1 100%);
+      box-shadow: 0 15px 20px rgba(171, 105, 212, 0.6);
+      transform: translateY(-3px);
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: 0 5px 10px rgba(171, 105, 212, 0.2);
+    }
+
+    @keyframes dogruAnim {
+      0% { transform: scale(1); color: green; }
+      50% { transform: scale(1.3); color: limegreen; }
+      100% { transform: scale(1); color: green; }
+    }
+
+    @keyframes yanlisAnim {
+      0% { transform: scale(1); color: red; }
+      50% { transform: scale(1.3); color: orangered; }
+      100% { transform: scale(1); color: red; }
+    }
+
+    #skor.animate-dogru {
+      animation: dogruAnim 0.5s ease;
+    }
+
+    #skor.animate-yanlis {
+      animation: yanlisAnim 0.5s ease;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        width: 90%;
+        padding: 15px;
+      }
+
+      #kafaResmi {
+        margin-top: 20px;
+      }
+
+      #letters button {
+        padding: 6px;
+        font-size: 16px;
+      }
+
+      input[type="text"] {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sol taraf: Oyun -->
+    <div class="game-area">
+      <h1>Adam Asmaca</h1>
+      <p>Skor: <span id="skor">0</span></p>
+
+      <p id="word"></p>
+      <p id="message"></p>
+      <div id="letters"></div>
+      <p>Kalan Hak: <span id="tries">7</span></p>
+      <p>Kalan Süre: <span id="zaman">90</span> saniye</p> <!-- Süre göstergesi eklendi -->
+      <p>Kategori: <span id="kategori"></span></p>
+      <button onclick="restartGame()">Yeniden Başla</button>
+
+      <div style="margin-top: 20px;">
+        <input type="text" id="kelimeTahmini" placeholder="Kelime tahminin" />
+        <button onclick="kelimeyiTahminEt()">Tahmin Et</button>
+      </div>
+
+      <div id="skorFormu" style="display:none;">
+        <p>Adını yaz ve skorunu kaydet:</p>
+        <input type="text" id="kullaniciAdi" placeholder="Adın">
+        <button onclick="skoruGonder()">Kaydet</button>
+      </div>
+    </div>
+
+    <!-- Sağ taraf: Adam çizimi -->
+    <div style="position: relative;">
+      <canvas id="adam" width="200" height="250"></canvas>
+      <img id="kafaResmi" src="img/kafa.png" alt="Kafa" style="position: absolute; top: 50px; left: 100px; width: 40px; display: none;" />
+    </div>
+
+    <audio id="dogruSes" src="dogru.wav"></audio>
+    <audio id="yanlisSes" src="yanlis.wav"></audio>
+  </div>
+
+  <script>
+    const kelimeler = [
+      { kelime: "kedi", kategori: "hayvan" },
+      { kelime: "oje", kategori: "nesne" },
+      { kelime: "muz", kategori: "meyve" },
+      { kelime: "bilgisayar", kategori: "teknolojik cihaz" },
+      { kelime: "çanta", kategori: "eşya" },
+      { kelime: "anahtarlık", kategori: "eşya" },
+      { kelime: "panda", kategori: "hayvan" },
+      { kelime: "sandalye", kategori: "eşya" },
+      { kelime: "armut", kategori: "meyve" },
+      { kelime: "top", kategori: "oyuncak" },
+      { kelime: "araba", kategori: "taşıt" },
+      { kelime: "balık", kategori: "hayvan" },
+      { kelime: "kuş", kategori: "hayvan" },
+      { kelime: "güneş", kategori: "doğa" },
+      { kelime: "kitap", kategori: "eşya" },
+      { kelime: "kalem", kategori: "eşya" },
+      { kelime: "çiçek", kategori: "doğa" },
+      { kelime: "kuzu", kategori: "hayvan" },
+      { kelime: "eldiven", kategori: "giysi" },
+      { kelime: "şapka", kategori: "giysi" }
+    ];
+
+    let secilenKelime = {};
+    let tahminler = [];
+    let kalanHak = 7;
+    let skor = 0;  // skor değişkeni
+    let zamanSure = 90;  // 90 saniye = 1 dakika 30 saniye
+    let zamanInterval;
+
+    const wordEl = document.getElementById("word");
+    const triesEl = document.getElementById("tries");
+    const messageEl = document.getElementById("message");
+    const lettersEl = document.getElementById("letters");
+    const kategoriEl = document.getElementById("kategori");
+    const canvas = document.getElementById("adam");
+    const ctx = canvas.getContext("2d");
+    const zamanEl = document.getElementById("zaman");
+
+    function rastgeleKelime() {
+      const index = Math.floor(Math.random() * kelimeler.length);
+      return kelimeler[index];
+    }
+
+    function guncelleEkran() {
+      let gosterim = "";
+      for (let harf of secilenKelime.kelime) {
+        if (tahminler.includes(harf)) {
+          gosterim += harf + " ";
+        } else {
+          gosterim += "_ ";
+        }
+      }
+
+      wordEl.textContent = gosterim.trim();
+      kategoriEl.textContent = secilenKelime.kategori;
+
+      if (!gosterim.includes("_")) {
+        mesajVeOyunBitir("🎉 Tebrikler, kazandın!");
+      }
+
+      if (kalanHak === 0) {
+        mesajVeOyunBitir("😞 Kaybettin! Kelime: " + secilenKelime.kelime);
+      }
+
+      triesEl.textContent = kalanHak;
+      adamCiz(kalanHak);
+    }
+
+    function mesajVeOyunBitir(mesaj) {
+      messageEl.textContent = mesaj;
+      kilitle();
+      clearInterval(zamanInterval);
+      document.getElementById("skorFormu").style.display = "block";
+    }
+
+    function harfTikla(harf) {
+      if (tahminler.includes(harf) || kalanHak === 0) return;
+
+      tahminler.push(harf);
+
+      const skorEl = document.getElementById("skor");
+
+      if (!secilenKelime.kelime.includes(harf)) {
+        kalanHak--;
+        skor -= 5;
+        skorEl.textContent = skor;
+        yanlisAnimasyon();
+        document.getElementById("yanlisSes").play();
+      } else {
+        skor += 10;
+        skorEl.textContent = skor;
+        dogruAnimasyon();
+        document.getElementById("dogruSes").play();
+      }
+
+      guncelleEkran();
+    }
+
+    function kilitle() {
+      const tuslar = document.querySelectorAll("#letters button");
+      tuslar.forEach(b => (b.disabled = true));
+    }
+
+    function restartGame() {
+      secilenKelime = rastgeleKelime();
+      tahminler = [];
+      kalanHak = 7;
+      skor = 0;
+      zamanSure = 90;
+      messageEl.textContent = "";
+      document.getElementById("skorFormu").style.display = "none";
+      document.getElementById("kelimeTahmini").value = "";
+      document.getElementById("skor").textContent = skor;
+      zamanEl.textContent = zamanSure;
+      guncelleEkran();
+      olusturHarfButonlari();
+      document.getElementById("kafaResmi").style.display = "none";
+      zamanBaslat();
+    }
+
+    function olusturHarfButonlari() {
+      lettersEl.innerHTML = "";
+      const alfabe = "abcçdefgğhıijklmnoöprsştuüvyz";
+      for (let harf of alfabe) {
+        const buton = document.createElement("button");
+        buton.textContent = harf;
+        buton.onclick = () => harfTikla(harf);
+        lettersEl.appendChild(buton);
+      }
+    }
+
+    function adamCiz(hak) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#333";
+      ctx.lineWidth = 2;
+
+      const cizimler = [
+        () => {
+          ctx.beginPath(); ctx.moveTo(10, 240); ctx.lineTo(150, 240); ctx.stroke(); // zemin
+          ctx.beginPath(); ctx.moveTo(40, 240); ctx.lineTo(40, 20); ctx.stroke(); // dik direk
+          ctx.beginPath(); ctx.moveTo(40, 20); ctx.lineTo(120, 20); ctx.stroke(); // üst direk
+          ctx.beginPath(); ctx.moveTo(120, 20); ctx.lineTo(120, 50); ctx.stroke(); // ip
+        },
+        () => {
+          document.getElementById("kafaResmi").style.display = "block";
+        },
+        () => { ctx.beginPath(); ctx.moveTo(120, 90); ctx.lineTo(120, 150); ctx.stroke(); }, // gövde
+        () => { ctx.beginPath(); ctx.moveTo(120, 100); ctx.lineTo(90, 130); ctx.stroke(); }, // sol kol
+        () => { ctx.beginPath(); ctx.moveTo(120, 100); ctx.lineTo(150, 130); ctx.stroke(); }, // sağ kol
+        () => { ctx.beginPath(); ctx.moveTo(120, 150); ctx.lineTo(90, 190); ctx.stroke(); }, // sol bacak
+        () => { ctx.beginPath(); ctx.moveTo(120, 150); ctx.lineTo(150, 190); ctx.stroke(); }  // sağ bacak
+      ];
+
+      const toplamHak = 7;
+      const kalanParca = toplamHak - hak;
+
+      for (let i = 0; i <= kalanParca && i < cizimler.length; i++) {
+        setTimeout(cizimler[i], i * 200);
+      }
+    }
+
+    function skoruGonder() {
+      const isim = document.getElementById("kullaniciAdi").value;
+      const skor = tahminler.filter(harf => secilenKelime.kelime.includes(harf)).length;
+
+      if (isim.trim() === "") {
+        alert("Lütfen adını gir.");
+        return;
+      }
+
+      fetch("skor_kaydet.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "isim=" + encodeURIComponent(isim) + "&skor=" + skor
+      })
+      .then(response => response.text())
+      .then(data => {
+        alert(data);
+        document.getElementById("skorFormu").style.display = "none";
+      })
+      .catch(error => {
+        alert("Hata oluştu: " + error);
+      });
+    }
+
+    function kelimeyiTahminEt() {
+      const tahmin = document.getElementById("kelimeTahmini").value.trim().toLowerCase();
+
+      if (tahmin === "") {
+        alert("Lütfen bir tahmin gir.");
+        return;
+      }
+
+      if (tahmin === secilenKelime.kelime) {
+        mesajVeOyunBitir("🎉 Doğru bildin! Kelime: " + secilenKelime.kelime);
+        wordEl.textContent = secilenKelime.kelime.split("").join(" ");
+      } else {
+        kalanHak = Math.max(0, kalanHak - 2);
+        guncelleEkran();
+        if (kalanHak > 0) {
+          alert("Yanlış tahmin! 2 hak gitti.");
+        }
+      }
+
+      document.getElementById("kelimeTahmini").value = "";
+    }
+
+    function dogruAnimasyon() {
+      const skorEl = document.getElementById("skor");
+      skorEl.classList.remove("animate-dogru");
+      void skorEl.offsetWidth;  // restart animation
+      skorEl.classList.add("animate-dogru");
+    }
+
+    function yanlisAnimasyon() {
+      const skorEl = document.getElementById("skor");
+      skorEl.classList.remove("animate-yanlis");
+      void skorEl.offsetWidth;  // restart animation
+      skorEl.classList.add("animate-yanlis");
+    }
+
+    function zamanBaslat() {
+      clearInterval(zamanInterval);
+      zamanInterval = setInterval(() => {
+        zamanSure--;
+        zamanEl.textContent = zamanSure;
+
+        if (zamanSure <= 0) {
+          clearInterval(zamanInterval);
+          mesajVeOyunBitir("⏰ Süren doldu! Kaybettin.");
+          kalanHak = 0;
+          triesEl.textContent = kalanHak;
+          adamCiz(kalanHak);
+        }
+      }, 1000);
+    }
+
+    restartGame();
+  </script>
+</body>
+</html>
